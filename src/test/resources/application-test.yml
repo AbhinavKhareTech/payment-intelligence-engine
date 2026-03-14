@@ -1,0 +1,15 @@
+spring:
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers:localhost:9092}
+
+app:
+  genai:
+    enabled: false
+  kafka:
+    consumer:
+      concurrency: 1
+
+logging:
+  level:
+    root: WARN
+    com.paymentintelligence: DEBUG

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: payment-intelligence-engine
+description: GenAI-augmented payment risk scoring microservice
+type: application
+version: 1.0.0
+appVersion: "1.0.0"

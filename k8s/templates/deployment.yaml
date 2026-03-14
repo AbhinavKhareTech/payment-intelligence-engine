@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app: {{ .Chart.Name }}
+    version: {{ .Chart.AppVersion }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+        version: {{ .Chart.AppVersion }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      terminationGracePeriodSeconds: 45
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ .Values.env.SPRING_PROFILES_ACTIVE }}
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: {{ .Values.env.KAFKA_BOOTSTRAP_SERVERS }}
+            - name: GENAI_ENABLED
+              value: {{ .Values.env.GENAI_ENABLED | quote }}
+            - name: GENAI_MODEL
+              value: {{ .Values.env.GENAI_MODEL }}
+            - name: GENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Chart.Name }}-secrets
+                  key: genai-api-key
+          resources:
+            requests:
+              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.resources.limits.cpu }}
+              memory: {{ .Values.resources.limits.memory }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: 8080
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: 8080
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    app: {{ .Chart.Name }}
+---
+{{- if .Values.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Chart.Name }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Chart.Name }}
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}
+{{- end }}

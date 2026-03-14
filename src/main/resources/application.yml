@@ -1,0 +1,133 @@
+server:
+  port: 8080
+  shutdown: graceful
+
+spring:
+  application:
+    name: payment-intelligence-engine
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+    producer:
+      acks: all
+      retries: 3
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+# Application-specific configuration
+app:
+  kafka:
+    consumer:
+      group-id: payment-risk-engine
+      concurrency: 3
+    topics:
+      transactions: payment.transactions
+      decisions: payment.risk.decisions
+      review-queue: payment.review.queue
+      dlq: payment.transactions.dlq
+
+  hazelcast:
+    cluster-name: payment-intel-cluster
+    merchant-cache-ttl-seconds: 300
+
+  genai:
+    enabled: ${GENAI_ENABLED:true}
+    base-url: ${GENAI_BASE_URL:https://api.anthropic.com}
+    api-key: ${GENAI_API_KEY:}
+    model: ${GENAI_MODEL:claude-sonnet-4-20250514}
+    timeout-ms: 2000
+
+  rules:
+    high-value-threshold: 10000
+    genai-decline-threshold: 0.85
+    genai-review-threshold: 0.6
+    max-daily-velocity: 500
+    max-daily-volume: 1000000
+
+# Actuator and observability
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: payment-intelligence-engine
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        risk.scoring.latency: true
+        pipeline.e2e.latency: true
+
+# OpenAPI
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.paymentintelligence: DEBUG
+    org.apache.kafka: WARN
+    com.hazelcast: WARN
+  pattern:
+    console: "%d{ISO8601} [%thread] %-5level %logger{36} - txn=%X{transactionId} %msg%n"
+
+---
+# Profile: local development
+spring:
+  config:
+    activate:
+      on-profile: local
+
+app:
+  genai:
+    enabled: false
+  kafka:
+    consumer:
+      concurrency: 1
+
+logging:
+  level:
+    com.paymentintelligence: TRACE
+
+---
+# Profile: production
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+server:
+  port: 8080
+
+app:
+  kafka:
+    consumer:
+      concurrency: 6
+
+logging:
+  level:
+    root: WARN
+    com.paymentintelligence: INFO
