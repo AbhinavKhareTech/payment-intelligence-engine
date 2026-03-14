@@ -1,6 +1,7 @@
 # Payment Intelligence Engine
 
-GenAI-augmented payment processing microservice that performs real-time transaction risk scoring, combining LLM-powered fraud analysis with deterministic business rules to produce Accept / Review / Decline decisions.
+GenAI-Augmented Real-Time Payment Risk Intelligence Engine  
+Reference architecture for secure, low-latency transaction decisioning — inspired by production needs in global payment acceptance platforms (e.g., fraud/risk pre-auth filters). GenAI-augmented payment processing microservice that performs real-time transaction risk scoring, combining LLM-powered fraud analysis with deterministic business rules to produce Accept / Review / Decline decisions.
 
 Built to demonstrate production-grade payment system architecture: event-driven ingestion, sub-300ms authorization-path latency, circuit-breaker-protected GenAI integration, distributed caching for merchant risk profiles, and full observability.
 
