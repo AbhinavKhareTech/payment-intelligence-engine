@@ -1,5 +1,3 @@
-# 01-system-architecture.md
-
 ## Risk Engine High-Level Architecture
 
 ```mermaid
