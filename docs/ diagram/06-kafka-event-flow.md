@@ -1,5 +1,5 @@
 ---
-title: Kafka Topics & Event Flow
+Kafka Topics & Event Flow
 ---
 
 ```mermaid
