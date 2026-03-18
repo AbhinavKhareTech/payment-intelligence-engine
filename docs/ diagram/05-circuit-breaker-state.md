@@ -1,5 +1,5 @@
 ---
-title: Resilience4j Circuit Breaker - States & Transitions
+Resilience4j Circuit Breaker - States & Transitions
 ---
 
 ```mermaid
