@@ -1,5 +1,3 @@
-# 03-scoring-pipeline.md
-
 ## Risk Scoring & Decision Pipeline
 
 ```mermaid
