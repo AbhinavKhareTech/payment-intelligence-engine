@@ -1,42 +1,48 @@
+# 01-system-architecture.md
+
+## Risk Engine High-Level Architecture
+
+```mermaid
 ---
-title: Payment Intelligence Engine - System Architecture
+title: Risk Engine - System Architecture & Flow Types
 ---
-graph TB
-    subgraph "Ingestion Layer"
-        K_IN["Kafka Topic<br>payment.txns<br>(3 partitions)"]
-    end
-
-    subgraph "Risk Engine (Spring Boot Java 21)"
-        CON["Kafka Consumer<br>Manual ACK + DLQ"]
-        CACHE["Hazelcast Embedded<br>Near-cache enabled<br>Maps:<br>• merchant-risk-profiles<br>• transaction-velocity-counters"]
-        ENRICH["Enrich Transaction<br>+ Merchant Profile"]
-        GENAI["GenAI Scoring Service<br>Anthropic Claude<br>Structured JSON Output"]
-        CB["Resilience4j Circuit Breaker<br>50% failure / 10-call window"]
-        FALLBACK["Deterministic Fallback<br>Heuristic scoring"]
-        RULES["Rules Engine<br>9 priority-ordered rules"]
-        DECISION["Decision Aggregator<br>Rules override GenAI"]
-    end
-
-    subgraph "Output Layer"
-        K_DEC["Kafka Topic<br>decisions"]
-        K_REV["Kafka Topic<br>review.q"]
-        K_DLQ["Kafka DLQ<br>payment.transactions.dlq"]
-    end
-
+flowchart TD
     subgraph "External Systems"
-        CLAUDE["Anthropic Claude API"]
-        PGW["Payment Gateway / Orchestrator"]
-        OPS["Ops / Compliance Team<br>(review queue consumer)"]
+        PGW[Payment Gateway]
+        CLAUDE[Claude API]
+        OPS[Ops / Monitoring]
     end
 
-    PGW --> K_IN
-    K_IN --> CON
-    CON --> ENRICH
-    ENRICH --> CACHE
-    CACHE --> GENAI
+    subgraph "Kafka Topics"
+        K_IN((payment.txn incoming events))
+        K_OUT((decisions / review.q))
+        K_DLQ((dead-letter / errors))
+        K_REV((review.q))
+        K_DEC((approved/declined))
+    end
+
+    subgraph "Risk Engine"
+        direction TB
+
+        CON((CON Consumer))
+        CACHE((CACHE Redis / in-memory))
+        ENRICH((ENRICH Velocity + Profile))
+        GENAI((GENAI Claude Prompt))
+        CB((CB Circuit Breaker))
+        FALLBACK((FALLBACK Heuristic Rules))
+        RULES((RULES Deterministic Rules 001–009))
+        DECISION((DECISION Override & Final Score))
+    end
+
+    %% Flows
+    PGW -->|"Publish txn event"| K_IN
+    K_IN -->|"Consume (3 partitions)"| CON
+    CON --> CACHE
+    CACHE --> ENRICH
+    ENRICH --> GENAI
     GENAI --> CB
     CB -->|"CLOSED → success"| GENAI
-    CB -->|"OPEN"| FALLBACK
+    CB -->|"OPEN → fallback"| FALLBACK
     GENAI --> RULES
     FALLBACK --> RULES
     RULES --> DECISION
@@ -44,10 +50,14 @@ graph TB
     DECISION -->|"REVIEW"| K_REV
     DECISION -->|"processing error"| K_DLQ
 
+    %% Styling
     classDef kafka fill:#e3f2fd,stroke:#1976d2,color:#0d47a1
     classDef engine fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
-    classDef external fill:#fff3e0,stroke:#ef6c00,color:#e65100
+    classDef external fill:#fff3e0,stroke:#ef6c00,color:#663300
 
-    class K_IN,K_DEC,K_REV,K_DLQ kafka
+    class K_IN,K_OUT,K_DLQ,K_REV,K_DEC kafka
     class CON,CACHE,ENRICH,GENAI,CB,FALLBACK,RULES,DECISION engine
-    class CLAUDE,PGW,OPS external
+    class PGW,CLAUDE,OPS external
+
+    %% Cleaner link style (optional)
+    linkStyle default stroke:#555,stroke-width:1.2px
