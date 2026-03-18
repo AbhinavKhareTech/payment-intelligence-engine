@@ -1,4 +1,4 @@
-# 02-risk-evaluation-sequence.md
+# Risk evaluation sequence
 
 ```mermaid
 sequenceDiagram
