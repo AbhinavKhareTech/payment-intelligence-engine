@@ -1,5 +1,3 @@
-# 04-rules-engine.md
-
 ## Rules Engine - Deterministic Rule Evaluation & Override Logic
 
 ```mermaid
